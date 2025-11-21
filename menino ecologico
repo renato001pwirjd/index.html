@@ -254,7 +254,7 @@
             ]
         };
         
-        // --- INICIALIZAÇÃO DE ÁUDIO GLOBAL (Evita ReferenceError) ---
+        // --- INICIALIZAÇÃO DE ÁUDIO GLOBAL (Corrigido o ReferenceError) ---
         // Inicializa o contexto de áudio antes das classes que o usam.
         const globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
         let globalMusicOn = true; 
@@ -1171,7 +1171,7 @@
                             this.addMessage('Música ON', 'lightblue', 50);
                         } else {
                             if (this.backgroundMusic) this.backgroundMusic.stop();
-                            this.addMessage('Música OFF', 'darkblue', 50);
+                            this.addMessage('Música OFF', 'darkblue', 5d0);
                         }
                         break;
                 }
