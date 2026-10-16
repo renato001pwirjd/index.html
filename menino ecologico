@@ -1,1203 +1,227 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Menino Ecológico: Recicla Certo! ♻️</title>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
-    
-    <style>
-        /*
-         * Estilos para o Jogo "Menino Ecológico: Recicla Certo!"
-         */
-
-        /* --- Configurações Básicas e Fontes --- */
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #f0f0f0;
-            font-family: 'Fredoka One', 'Comic Sans MS', cursive;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: #333;
-        }
-
-        /* --- Container Principal do Jogo (Mantém a proporção 1200x800) --- */
-        #gameContainer {
-            position: relative;
-            /* Usa 100vmin para caber na menor dimensão da tela (PC/Mobile) */
-            width: 100vmin;
-            height: calc(100vmin * 800 / 1200); /* Proporção 1200x800 */
-            max-width: 1200px;
-            max-height: 800px;
-            overflow: hidden;
-            background-color: #87CEEB; /* Cor de fundo padrão (Céu) */
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-        }
-
-        /* --- Canvas do Jogo --- */
-        #gameCanvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            touch-action: none; /* Previne scroll/zoom no mobile */
-        }
-
-        /* --- Overlays (Menus, Vitórias, Derrotas, Pausas) --- */
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none; /* Gerenciado pelo JS */
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            background-color: rgba(0, 0, 0, 0.85);
-            color: white;
-            z-index: 100;
-            animation: fadeIn 0.5s ease;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        .overlay h1 {
-            font-size: 5vmin;
-            color: #FFD700; /* Sol Amarelo */
-            text-shadow: 4px 4px 0 #228B22; /* Grama Verde */
-            margin-bottom: 20px;
-            line-height: 1.2;
-        }
-
-        .overlay p {
-            font-size: 2.5vmin;
-            margin: 10px 0;
-        }
-        
-        .overlay .score-text {
-            font-size: 3vmin;
-            color: #FFA500;
-        }
-
-        /* --- Estilo dos Botões --- */
-        .overlay button {
-            background-color: #228B22; /* Grama Verde */
-            color: white;
-            border: 6px solid #FFD700; /* Sol Amarelo */
-            border-radius: 25px;
-            padding: 2vmin 4vmin;
-            font-family: 'Fredoka One', cursive;
-            font-size: 3vmin;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 20px;
-            box-shadow: 0 8px 0 #FF8C00; /* Laranja Escuro */
-            line-height: 1;
-        }
-
-        .overlay button:hover {
-            background-color: #3CB371; /* Verde Mais Claro */
-            transform: translateY(2px);
-            box-shadow: 0 6px 0 #FF8C00;
-        }
-
-        /* --- Popup Educativo (Feedback de Acerto) --- */
-        #educationalPopup {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            background-color: rgba(255, 255, 255, 0.95);
-            color: #333;
-            padding: 20px 40px;
-            border-radius: 15px;
-            border: 5px solid #228B22;
-            font-size: 2.5vmin;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            z-index: 200;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s, transform 0.3s;
-            text-align: center;
-        }
-
-        #educationalPopup.show {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-
-        /* --- Animações --- */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        /* Animação de tremor na tela para erros */
-        @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            70% { transform: translate(3px, 1px) rotate(-1deg); }
-            80% { transform: translate(-1px, -1px) rotate(1deg); }
-            90% { transform: translate(1px, 2px) rotate(0deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
-        }
-
-        .screen-shake {
-            animation: shake 0.5s;
-        }
-    </style>
-</head>
-<body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="1200" height="800"></canvas>
-
-        <div id="menuOverlay" class="overlay" style="display: flex;">
-            <h1>🌎 Vamos Reciclar o Nosso Planeta! ♻️</h1>
-            <p>Seja o Menino Ecológico! Arraste o lixo para a lixeira correta!</p>
-            <p class="score-text" id="highScoreText">Recorde: 0</p>
-            <button onclick="game.startGame()">JOGAR</button>
-            <p style="font-size: 1.8vmin; margin-top: 30px;">
-                Dica: Use P para Pausar e M para ligar/desligar a música.
-            </p>
-        </div>
-
-        <div id="pauseOverlay" class="overlay">
-            <h1>⏸️ Jogo Pausado ⏸️</h1>
-            <p>Pressione PAUSAR para voltar, ou R para reiniciar.</p>
-            <button onclick="game.togglePause()">CONTINUAR</button>
-            <button style="background-color: #A9A9A9;" onclick="game.init()">REINICIAR</button>
-        </div>
-
-        <div id="winOverlay" class="overlay">
-            <h1>🎉 Parabéns! Nível Completo! 🎉</h1>
-            <p>Sua Pontuação Final do Nível: <span class="score-text" id="winScore">0</span></p>
-            <button id="nextLevelButton">Próximo Nível</button>
-        </div>
-
-        <div id="loseOverlay" class="overlay">
-            <h1>❌ Ops! Tente de Novo. 😔</h1>
-            <p>Sua Pontuação Final: <span class="score-text" id="loseScore">0</span></p>
-            <p class="score-text">Recorde: <span id="loseHighScore">0</span></p>
-            <button onclick="game.init()">REJOGAR</button>
-        </div>
-        
-        <div id="educationalPopup"></div>
-    </div>
-
-    <script>
-        //
-        // SCRIPT COMPLETO DO JOGO EM 2D
-        //
-
-        // --- Configurações Globais ---
-        const CANVAS_WIDTH = 1200;
-        const CANVAS_HEIGHT = 800;
-        const GRAVITY = 0.1;
-        const INITIAL_LIVES = 3;
-        
-        // Configurações por Nível
-        const LEVEL_CONFIG = [
-            { totalTrash: 20, speed: 1.5, timer: 60, spawnRate: 1500 }, // Nível 1: Fácil
-            { totalTrash: 30, speed: 2.5, timer: 60, spawnRate: 1000 }, // Nível 2: Médio
-            { totalTrash: 40, speed: 3.5, timer: 60, spawnRate: 700 }  // Nível 3: Difícil
-        ];
-
-        // Mapeamento de Cores das Lixeiras
-        const BIN_COLORS = {
-            'Papel': '#1E90FF', // Azul Claro
-            'Plástico': '#3CB371', // Verde
-            'Vidro': '#FFD700', // Amarelo
-            'Orgânico': '#8B4513', // Marrom
-            'Metal': '#A9A9A9' // Cinza
-        };
-
-        // Tipos de Lixo (Nome, Cor do bloco, Emoji)
-        const TRASH_TYPES = {
-            'Papel': [
-                { name: 'Jornal', color: '#B0C4DE', img: '📰' },
-                { name: 'Caixa de Papelão', color: '#F0E68C', img: '📦' },
-                { name: 'Caderno', color: '#EEE8AA', img: '📓' },
-                { name: 'Livro', color: '#BDB76B', img: '📚' },
-            ],
-            'Plástico': [
-                { name: 'Garrafa PET', color: '#ADD8E6', img: '🧴' },
-                { name: 'Sacola Plástica', color: '#90EE90', img: '🛍️' },
-                { name: 'Pote Iogurte', color: '#FAFAD2', img: '🥛' },
-                { name: 'Garrafa de Leite', color: '#F8F8FF', img: '🍼' },
-            ],
-            'Vidro': [
-                { name: 'Garrafa Refrigerante', color: '#B0E0E6', img: '🍾' },
-                { name: 'Pote de Geléia', color: '#F0FFFF', img: '🏺' },
-                { name: 'Frasco Perfume', color: '#ADD8E6', img: '🧪' },
-                { name: 'Copo Quebrado', color: '#D8BFD8', img: '🥃' },
-            ],
-            'Orgânico': [
-                { name: 'Casca de Banana', color: '#DAA520', img: '🍌' },
-                { name: 'Resto de Comida', color: '#8B4513', img: '🍖' },
-                { name: 'Folha de Salada', color: '#228B22', img: '🍃' },
-                { name: 'Maçã Mordida', color: '#FF4500', img: '🍎' },
-            ],
-            'Metal': [
-                { name: 'Lata de Alumínio', color: '#C0C0C0', img: '🥫' },
-                { name: 'Tampa de Metal', color: '#DCDCDC', img: '💿' },
-                { name: 'Parafuso', color: '#808080', img: '🔩' },
-                { name: 'Chave', color: '#DAA520', img: '🔑' },
-            ]
-        };
-        
-        // --- INICIALIZAÇÃO DE ÁUDIO GLOBAL (Corrigido o ReferenceError) ---
-        // Inicializa o contexto de áudio antes das classes que o usam.
-        const globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-        let globalMusicOn = true; 
-
-        // --- CLASSES DE OBJETO ---
-
-        /** Classe Base para Sons usando Web Audio API (Chiptune Style) */
-        class AudioFX {
-            constructor(freq, type = 'sine', duration = 0.1, volume = 0.5) {
-                // Usa o contexto global criado
-                this.context = globalAudioContext; 
-                this.freq = freq;
-                this.type = type;
-                this.duration = duration;
-                this.volume = volume;
-            }
-
-            play() {
-                // Verifica a flag de música do objeto 'game'
-                if (typeof game === 'undefined' || !game.musicOn) return; 
-
-                const oscillator = this.context.createOscillator();
-                const gainNode = this.context.createGain();
-
-                oscillator.type = this.type;
-                oscillator.frequency.setValueAtTime(this.freq, this.context.currentTime);
-
-                gainNode.gain.setValueAtTime(this.volume, this.context.currentTime);
-                // Ramp para evitar click
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, this.context.currentTime + this.duration);
-
-                oscillator.connect(gainNode);
-                gainNode.connect(this.context.destination);
-
-                oscillator.start();
-                oscillator.stop(this.context.currentTime + this.duration);
-            }
-        }
-
-        // Sons Específicos
-        const soundHappy = new AudioFX(880, 'square', 0.1, 0.8);
-        const soundWrong = new AudioFX(110, 'triangle', 0.2, 0.8);
-        const soundPowerUp = new AudioFX(1320, 'sine', 0.05, 1);
-        const soundLevelUp = new AudioFX(1500, 'square', 0.3, 0.8);
-
-        /** Classe para Representar uma Lixeira */
-        class Bin {
-            constructor(type, x, y, w, h, color) {
-                this.type = type;
-                this.x = x;
-                this.y = y;
-                this.w = w;
-                this.h = h;
-                this.color = color;
-                this.shakeTime = 0;
-            }
-
-            draw(ctx) {
-                ctx.save();
-                
-                let drawX = this.x;
-                if (this.shakeTime > 0) {
-                    drawX += Math.sin(this.shakeTime * 50) * 5;
-                    this.shakeTime--;
-                }
-
-                // Corpo da Lixeira
-                ctx.fillStyle = this.color;
-                ctx.strokeStyle = '#333';
-                ctx.lineWidth = 3;
-                ctx.fillRect(drawX, this.y, this.w, this.h);
-                ctx.strokeRect(drawX, this.y, this.w, this.h);
-
-                // Tampa
-                ctx.fillStyle = this.color;
-                ctx.fillRect(drawX - 5, this.y - 10, this.w + 10, 15);
-                ctx.strokeRect(drawX - 5, this.y - 10, this.w + 10, 15);
-
-                // Título
-                ctx.fillStyle = 'white';
-                ctx.font = `${this.w / 10}px 'Fredoka One'`;
-                ctx.textAlign = 'center';
-                ctx.shadowColor = 'black';
-                ctx.shadowBlur = 2;
-                ctx.fillText(this.type, drawX + this.w / 2, this.y + this.h * 0.8);
-                ctx.restore();
-            }
-
-            shake() {
-                this.shakeTime = 15;
-            }
-
-            contains(x, y) {
-                return x > this.x && x < this.x + this.w && y > this.y && y < this.y + this.h;
-            }
-        }
-
-        /** Classe para Lixo que cai (e Power-ups) */
-        class TrashItem {
-            constructor(type, name, color, img, isPowerUp = false) {
-                this.type = type; 
-                this.name = name;
-                this.color = color;
-                this.img = img;
-                this.w = 50;
-                this.h = 50;
-                this.x = Math.random() * (CANVAS_WIDTH - this.w);
-                this.y = -this.h;
-                this.vy = isPowerUp ? game.levelSpeed * 0.5 : game.levelSpeed;
-                this.isDragging = false;
-                this.isCollected = false;
-                this.isPowerUp = isPowerUp;
-                this.angle = 0; 
-                this.rotationSpeed = (Math.random() - 0.5) * 0.05;
-            }
-
-            update() {
-                if (this.isDragging || this.isCollected) return;
-
-                this.vy += GRAVITY * 0.1;
-                this.y += this.vy;
-                this.angle += this.rotationSpeed;
-
-                if (this.y > CANVAS_HEIGHT) {
-                    this.isCollected = true;
-                    if (game.state === 'playing' && !this.isPowerUp) {
-                        game.lives--;
-                        game.screenShake = 30;
-                        soundWrong.play();
-                        game.combo = 0;
-                        game.addMessage('Lixo Perdido! -1 Vida.', 'red');
-                    }
-                }
-            }
-
-            draw(ctx) {
-                ctx.save();
-                ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
-                ctx.rotate(this.angle);
-
-                // Desenha a "caixa" do lixo/powerup
-                if (this.isPowerUp) {
-                    ctx.fillStyle = 'yellow';
-                    ctx.strokeStyle = '#FF4500';
-                    ctx.lineWidth = 4;
-                } else {
-                    ctx.fillStyle = this.color;
-                    ctx.strokeStyle = '#333';
-                    ctx.lineWidth = 2;
-                }
-                
-                ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
-                ctx.strokeRect(-this.w / 2, -this.h / 2, this.w, this.h);
-
-                // Desenha o emoji
-                ctx.font = `${this.w * 0.8}px Arial`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(this.img, 0, 0);
-
-                ctx.restore();
-            }
-
-            getCenter() {
-                return { x: this.x + this.w / 2, y: this.y + this.h / 2 };
-            }
-        }
-
-        /** Classe para Efeito de Partículas (Confete) */
-        class Particle {
-            constructor(x, y, color) {
-                this.x = x;
-                this.y = y;
-                this.radius = Math.random() * 5 + 2;
-                this.color = color;
-                this.vx = (Math.random() - 0.5) * 8;
-                this.vy = (Math.random() - 1) * 8;
-                this.alpha = 1;
-                this.gravity = 0.2;
-                this.life = 100;
-            }
-
-            update() {
-                this.vx *= 0.98;
-                this.vy += this.gravity;
-                this.x += this.vx;
-                this.y += this.vy;
-                this.alpha -= 0.01;
-                this.life--;
-            }
-
-            draw(ctx) {
-                ctx.save();
-                ctx.globalAlpha = this.alpha;
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
-        }
-
-        /** Classe para Mensagens Flutuantes (Combo, Score) */
-        class FloatingMessage {
-            constructor(text, x, y, color, size = 30, duration = 100) {
-                this.text = text;
-                this.x = x;
-                this.y = y;
-                this.color = color;
-                this.size = size;
-                this.vy = -1;
-                this.life = duration;
-                this.alpha = 1;
-            }
-
-            update() {
-                this.y += this.vy;
-                this.life--;
-                if (this.life < 50) {
-                    this.alpha = this.life / 50;
-                }
-            }
-
-            draw(ctx) {
-                ctx.save();
-                ctx.globalAlpha = this.alpha;
-                ctx.fillStyle = this.color;
-                ctx.font = `bold ${this.size}px "Fredoka One"`;
-                ctx.textAlign = 'center';
-                ctx.shadowColor = 'black';
-                ctx.shadowBlur = 5;
-                ctx.fillText(this.text, this.x, this.y);
-                ctx.restore();
-            }
-        }
-
-        /** Classe Principal do Jogo */
-        class Game {
-            constructor() {
-                this.canvas = document.getElementById('gameCanvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.container = document.getElementById('gameContainer');
-
-                // Usa o contexto global para evitar ReferenceError
-                this.audioContext = globalAudioContext; 
-                this.musicOn = globalMusicOn;
-                this.backgroundMusic = null;
-
-                this.state = 'menu';
-                this.highScore = parseInt(localStorage.getItem('ecogameHighScore') || '0', 10);
-                this.currentLevel = 0;
-
-                this.bins = [];
-                this.trashItems = [];
-                this.particles = [];
-                this.messages = [];
-                this.characters = [];
-
-                this.score = 0;
-                this.lives = INITIAL_LIVES;
-                this.combo = 0;
-                this.lastSpawnTime = 0;
-                this.trashSpawned = 0;
-                this.timer = 0;
-
-                this.levelSpeed = 0;
-                this.levelTotalTrash = 0;
-                this.levelSpawnRate = 0;
-                
-                this.speedBoostTime = 0;
-
-                this.screenShake = 0;
-                this.draggingTrash = null;
-
-                this.init();
-                this.setupEventListeners();
-                this.resizeCanvas();
-                window.addEventListener('resize', () => this.resizeCanvas());
-            }
-
-            /** Inicializa o estado do jogo (Menu Inicial) */
-            init() {
-                this.state = 'menu';
-                this.currentLevel = 0;
-                this.lives = INITIAL_LIVES;
-                this.score = 0;
-                this.combo = 0;
-                this.trashItems = [];
-                this.particles = [];
-                this.messages = [];
-                this.speedBoostTime = 0;
-
-                if (this.timerInterval) clearInterval(this.timerInterval);
-                if (this.backgroundMusic) this.backgroundMusic.stop();
-                this.backgroundMusic = null;
-
-                this.updateUI();
-                this.setupGameObjects();
-                this.gameLoop();
-                this.loadHighScore();
-            }
-
-            /** Configura as lixeiras e personagens */
-            setupGameObjects() {
-                const binW = CANVAS_WIDTH / 5.5;
-                const binH = CANVAS_HEIGHT * 0.15;
-                const binY = CANVAS_HEIGHT - binH - 20;
-                const gap = (CANVAS_WIDTH - (binW * 5)) / 6;
-
-                this.bins = [];
-                let x = gap;
-                for (const type in BIN_COLORS) {
-                    this.bins.push(new Bin(type, x, binY, binW, binH, BIN_COLORS[type]));
-                    x += binW + gap;
-                }
-
-                // Personagens (bonequinhos fofos)
-                const charColors = ['#00BFFF', '#FF8C00', '#FF69B4', '#ADFF2F', '#8A2BE2', '#F08080'];
-                this.characters = charColors.map((color, i) => ({
-                    color: color,
-                    x: CANVAS_WIDTH - 50,
-                    y: 100 + i * 100,
-                    size: 30,
-                    jumpTimer: Math.random() * 50,
-                }));
-            }
-
-            /** Inicia o Jogo (primeiro nível) */
-            startGame() {
-                // Tenta retomar o contexto de áudio na interação do usuário
-                if (this.audioContext.state === 'suspended') {
-                    this.audioContext.resume();
-                }
-                this.startLevel(1);
-                this.setupAudio();
-            }
-
-            /** Configura e inicia um novo nível */
-            startLevel(level) {
-                if (level > LEVEL_CONFIG.length) {
-                    this.state = 'win'; // Vitória Final!
-                    this.updateUI();
-                    return;
-                }
-                soundLevelUp.play();
-                this.currentLevel = level;
-                const config = LEVEL_CONFIG[level - 1];
-
-                this.levelSpeed = config.speed;
-                this.levelTotalTrash = config.totalTrash;
-                this.levelSpawnRate = config.spawnRate;
-                this.timer = config.timer;
-                this.trashSpawned = 0;
-                this.trashItems = [];
-                this.state = 'playing';
-                this.updateUI();
-                this.startTimer();
-                this.addMessage(`NÍVEL ${level}`, 'yellow', 150, 60);
-            }
-
-            /** Passa para o próximo nível */
-            nextLevel() {
-                this.startLevel(this.currentLevel + 1);
-            }
-
-            /** Inicia o Timer do nível */
-            startTimer() {
-                if (this.timerInterval) clearInterval(this.timerInterval);
-                this.timerInterval = setInterval(() => {
-                    if (this.state === 'playing') {
-                        this.timer--;
-                        if (this.speedBoostTime > 0) {
-                            this.speedBoostTime--;
-                            if (this.speedBoostTime === 0) {
-                                this.addMessage('Super Velocidade ACABOU!', '#FF4500', 100, 40);
-                            }
-                        }
-
-                        if (this.timer <= 0) {
-                            clearInterval(this.timerInterval);
-                            this.handleTimeOut();
-                        }
-                        this.updateUI();
-                    }
-                }, 1000);
-            }
-            
-            /** Lida com o tempo esgotado */
-            handleTimeOut() {
-                this.lives = 0;
-                this.state = 'lose';
-                this.saveHighScore();
-                this.addMessage('TEMPO ESGOTADO!', 'red', 100, 60);
-                this.updateUI();
-            }
-
-            /** Gerencia a música de fundo (Simples Chiptune) */
-            setupAudio() {
-                if (this.backgroundMusic) {
-                    this.backgroundMusic.stop();
-                    this.backgroundMusic = null;
-                }
-
-                if (!this.musicOn) return;
-
-                const freqMap = { 'A': 440, 'C': 523.25, 'D': 587.33, 'E': 659.25, 'G': 783.99 };
-                const pattern = ['A', 'C', 'D', 'E', 'G', 'E', 'D', 'C'];
-                let index = 0;
-
-                const playNote = () => {
-                    if (!this.musicOn || this.state !== 'playing') return;
-                    
-                    const freq = freqMap[pattern[index]];
-                    const oscillator = this.audioContext.createOscillator();
-                    const gainNode = this.audioContext.createGain();
-
-                    oscillator.type = 'square';
-                    oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
-
-                    gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.0001, this.audioContext.currentTime + 0.2);
-
-                    oscillator.connect(gainNode);
-                    gainNode.connect(this.audioContext.destination);
-
-                    oscillator.start();
-                    oscillator.stop(this.audioContext.currentTime + 0.2);
-
-                    index = (index + 1) % pattern.length;
-                };
-
-                this.backgroundMusic = {
-                    timer: setInterval(playNote, 250),
-                    stop: function() { clearInterval(this.timer); }
-                };
-            }
-
-            /** Alterna o estado de pausa do jogo */
-            togglePause() {
-                if (this.state === 'playing') {
-                    this.state = 'paused';
-                    clearInterval(this.timerInterval);
-                } else if (this.state === 'paused') {
-                    this.state = 'playing';
-                    this.startTimer();
-                }
-                this.updateUI();
-            }
-
-            /** O Loop Principal do Jogo */
-            gameLoop(timestamp) {
-                if (this.state !== 'paused' && this.state !== 'menu') {
-                    this.update(timestamp);
-                }
-                this.draw();
-
-                requestAnimationFrame((ts) => this.gameLoop(ts));
-            }
-
-            /** Lógica de Atualização (Update) */
-            update(timestamp) {
-                if (this.state !== 'playing') return;
-
-                // 1. Spawning de Lixo (e Power-ups)
-                if (this.trashSpawned < this.levelTotalTrash) {
-                    if (timestamp - this.lastSpawnTime > this.levelSpawnRate) {
-                        this.spawnTrash();
-                        this.lastSpawnTime = timestamp;
-                    }
-                }
-
-                // 2. Atualização de Lixos e Power-ups
-                this.trashItems.forEach(item => {
-                    if (this.speedBoostTime > 0 && !item.isDragging) {
-                        // Lixo para quando o power-up de Super Velocidade está ativo
-                        item.vy = 0;
-                        item.y += 0.5; // Pequeno movimento para indicar que está "congelado"
-                    } else {
-                        item.update();
-                    }
-                });
-                this.trashItems = this.trashItems.filter(item => !item.isCollected);
-
-                // 3. Atualização de Partículas e Mensagens
-                this.particles.forEach(p => p.update());
-                this.particles = this.particles.filter(p => p.alpha > 0);
-
-                this.messages.forEach(m => m.update());
-                this.messages = this.messages.filter(m => m.life > 0);
-
-                // 4. Verificação de Fim de Nível
-                if (this.trashSpawned === this.levelTotalTrash && this.trashItems.length === 0) {
-                    clearInterval(this.timerInterval);
-                    this.state = 'win';
-                    this.saveHighScore();
-                    this.updateUI();
-                }
-
-                // 5. Atualiza o shake da tela
-                if (this.screenShake > 0) {
-                    this.screenShake--;
-                    this.container.classList.add('screen-shake');
-                } else {
-                    this.container.classList.remove('screen-shake');
-                }
-            }
-
-            /** Lógica de Desenho (Draw) */
-            draw() {
-                const ctx = this.ctx;
-                ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-                this.drawBackground();
-                this.drawSun(ctx);
-                this.drawEarth(ctx);
-                this.drawCharacters(ctx);
-
-                this.bins.forEach(bin => bin.draw(ctx));
-
-                this.trashItems.forEach(item => item.draw(ctx));
-
-                this.particles.forEach(p => p.draw(ctx));
-                this.messages.forEach(m => m.draw(ctx));
-
-                if (this.state === 'playing' || this.state === 'paused') {
-                    this.drawUIElements(ctx);
-                }
-                
-                // Overlay de Pausa
-                if (this.state === 'paused') {
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-                }
-            }
-
-            // --- Funções Auxiliares de Desenho ---
-            drawBackground() {
-                const ctx = this.ctx;
-                const skyGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-                skyGradient.addColorStop(0, '#87CEEB'); 
-                skyGradient.addColorStop(1, '#E0F7FA');
-                ctx.fillStyle = skyGradient;
-                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-                const time = Date.now() / 5000;
-                for (let i = 0; i < 3; i++) {
-                    const x = (i * 400 + (time * 50) % (CANVAS_WIDTH + 200)) - 200;
-                    const y = 100 + i * 50;
-                    this.drawCloud(ctx, x, y);
-                }
-
-                ctx.fillStyle = '#228B22';
-                ctx.fillRect(0, CANVAS_HEIGHT - 120, CANVAS_WIDTH, 120);
-            }
-            drawCloud(ctx, x, y) {
-                ctx.fillStyle = 'white';
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-                ctx.shadowBlur = 10;
-                ctx.beginPath();
-                ctx.arc(x, y, 40, 0, Math.PI * 2);
-                ctx.arc(x + 50, y, 50, 0, Math.PI * 2);
-                ctx.arc(x + 100, y - 20, 30, 0, Math.PI * 2);
-                ctx.arc(x + 120, y, 40, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            }
-            drawSun(ctx) {
-                ctx.fillStyle = '#FFD700'; 
-                ctx.beginPath();
-                ctx.arc(CANVAS_WIDTH - 100, 100, 50, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#FF8C00';
-                ctx.font = '50px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('😊', CANVAS_WIDTH - 100, 100);
-            }
-            drawEarth(ctx) {
-                const time = Date.now() / 200;
-                const earthX = 80;
-                const earthY = 80;
-                const earthR = 50;
-
-                ctx.save();
-                ctx.translate(earthX, earthY);
-                ctx.rotate(time * 0.01);
-
-                ctx.fillStyle = '#00CED1';
-                ctx.beginPath();
-                ctx.arc(0, 0, earthR, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.fillStyle = '#3CB371';
-                ctx.beginPath();
-                ctx.arc(earthR * 0.4 * Math.cos(time * 0.05), earthR * 0.3 * Math.sin(time * 0.05), earthR * 0.2, 0, Math.PI * 2);
-                ctx.arc(earthR * -0.5 * Math.cos(time * 0.05 + 1), earthR * -0.6 * Math.sin(time * 0.05 + 1), earthR * 0.3, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.restore();
-            }
-            drawCharacters(ctx) {
-                this.characters.forEach(char => {
-                    char.jumpTimer += 0.05;
-                    const jump = Math.abs(Math.sin(char.jumpTimer)) * 20;
-
-                    ctx.fillStyle = char.color;
-                    ctx.beginPath();
-                    ctx.arc(char.x, char.y - jump, char.size, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(char.x - char.size * 0.3, char.y - jump - char.size * 0.1, char.size * 0.1, 0, Math.PI * 2);
-                    ctx.arc(char.x + char.size * 0.3, char.y - jump - char.size * 0.1, char.size * 0.1, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-            }
-            drawUIElements(ctx) {
-                ctx.shadowColor = 'black';
-                ctx.shadowBlur = 4;
-                
-                ctx.fillStyle = '#333';
-                ctx.font = 'bold 40px "Fredoka One"';
-                ctx.textAlign = 'center';
-                ctx.fillText(`PONTOS: ${this.score}`, CANVAS_WIDTH / 2, 50);
-
-                ctx.textAlign = 'right';
-                ctx.fillText(`VIDAS: ${'❤️'.repeat(this.lives)}`, CANVAS_WIDTH - 20, 50);
-
-                ctx.textAlign = 'left';
-                const timeColor = this.timer <= 10 ? 'red' : '#00008B';
-                ctx.fillStyle = timeColor;
-                ctx.fillText(`TEMPO: ${this.timer}s`, 20, 50);
-
-                if (this.combo > 1) {
-                    ctx.fillStyle = '#FF4500';
-                    ctx.textAlign = 'center';
-                    ctx.font = 'bold 50px "Fredoka One"';
-                    ctx.fillText(`COMBO x${this.combo}`, CANVAS_WIDTH / 2, 100);
-                }
-                
-                if (this.speedBoostTime > 0) {
-                    ctx.fillStyle = '#00FFFF';
-                    ctx.textAlign = 'left';
-                    ctx.font = 'bold 30px "Fredoka One"';
-                    ctx.fillText(`SUPER VELOCIDADE: ${this.speedBoostTime}s`, 20, 90);
-                }
-
-                ctx.shadowBlur = 0;
-            }
-            // --- Fim das Funções Auxiliares de Desenho ---
-
-            /** Cria e adiciona um novo item de lixo ou Power-up */
-            spawnTrash() {
-                // 5% de chance de Power-up
-                if (this.trashSpawned < this.levelTotalTrash && Math.random() < 0.05) {
-                    const powerUps = [
-                        { type: 'PowerUp', name: 'Super Velocidade', color: 'yellow', img: '⏱️' },
-                        { type: 'PowerUp', name: 'Vida Extra', color: 'lime', img: '➕' },
-                    ];
-                    const randomPowerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
-                    this.trashItems.push(new TrashItem(randomPowerUp.type, randomPowerUp.name, randomPowerUp.color, randomPowerUp.img, true));
-                } else {
-                    const types = Object.keys(TRASH_TYPES);
-                    const randomType = types[Math.floor(Math.random() * types.length)];
-                    const trashList = TRASH_TYPES[randomType];
-                    const randomTrash = trashList[Math.floor(Math.random() * trashList.length)];
-
-                    this.trashItems.push(new TrashItem(randomType, randomTrash.name, randomTrash.color, randomTrash.img));
-                }
-                
-                this.trashSpawned++;
-            }
-
-            /** Lida com o Drop de um item */
-            handleDrop(item) {
-                let hitBin = null;
-                const center = item.getCenter();
-                
-                if (item.isPowerUp) {
-                    this.handlePowerUp(item);
-                    return;
-                }
-
-                for (const bin of this.bins) {
-                    if (bin.contains(center.x, center.y)) {
-                        hitBin = bin;
-                        break;
-                    }
-                }
-
-                if (hitBin) {
-                    if (hitBin.type === item.type) {
-                        this.handleCorrectDrop(item, hitBin);
-                    } else {
-                        this.handleWrongDrop(item, hitBin);
-                    }
-                } else {
-                    item.isDragging = false;
-                    item.vy = 0;
-                }
-
-                this.draggingTrash = null;
-                this.updateUI();
-            }
-            
-            /** Lida com a coleta de Power-up */
-            handlePowerUp(item) {
-                item.isCollected = true;
-                soundPowerUp.play();
-                
-                if (item.name === 'Super Velocidade') {
-                    this.speedBoostTime = 3;
-                    this.addMessage('SUPER VELOCIDADE ATIVADA!', '#00FFFF', 150, 45);
-                } else if (item.name === 'Vida Extra') {
-                    this.lives = Math.min(INITIAL_LIVES + 2, this.lives + 1);
-                    this.addMessage('VIDA EXTRA! ❤️', 'lime', 100, 45);
-                }
-                
-                this.spawnParticles(item.x + item.w / 2, item.y + item.h / 2, 20, ['#00FFFF', 'lime']);
-                this.characters.forEach(char => char.jumpTimer = Math.PI * 1.5);
-            }
-
-            /** Lida com o acerto de reciclagem */
-            handleCorrectDrop(trash, bin) {
-                trash.isCollected = true;
-                soundHappy.play();
-                bin.shake();
-
-                this.combo++;
-                let points = 10;
-                if (this.combo > 1) {
-                    points *= this.combo;
-                    this.addMessage(`COMBO x${this.combo}! +${points}`, 'gold');
-                } else {
-                    this.addMessage(`+${points}`, 'lime');
-                }
-                this.score += points;
-
-                this.spawnParticles(trash.x + trash.w / 2, trash.y + trash.h / 2, 20);
-                this.showEducationalPopup(trash.name, bin.type);
-                this.characters.forEach(char => char.jumpTimer = Math.PI * 1.5);
-            }
-
-            /** Lida com o erro de reciclagem */
-            handleWrongDrop(trash, bin) {
-                this.lives--;
-                this.screenShake = 30;
-                soundWrong.play();
-                bin.shake();
-
-                this.combo = 0;
-                this.addMessage(`-1 VIDA! Errou a lixeira.`, 'red');
-
-                if (this.lives <= 0) {
-                    this.state = 'lose';
-                    clearInterval(this.timerInterval);
-                    this.saveHighScore();
-                } else {
-                    trash.isDragging = false;
-                    trash.x = Math.random() * (CANVAS_WIDTH - trash.w);
-                    trash.y = -trash.h;
-                    trash.vy = game.levelSpeed;
-                }
-            }
-
-            /** Cria e adiciona partículas de confete */
-            spawnParticles(x, y, count, colors = ['#FFD700', '#FF4500', '#ADFF2F', '#1E90FF']) {
-                for (let i = 0; i < count; i++) {
-                    const color = colors[Math.floor(Math.random() * colors.length)];
-                    this.particles.push(new Particle(x, y, color));
-                }
-            }
-
-            /** Adiciona uma mensagem flutuante ao canvas */
-            addMessage(text, color, duration = 100, size = 30) {
-                this.messages.push(new FloatingMessage(text, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, color, size, duration));
-            }
-
-            /** Exibe o Popup Educativo */
-            showEducationalPopup(trashName, binType) {
-                const popup = document.getElementById('educationalPopup');
-                popup.innerHTML = `🌟 **Ótimo!** 🌟<br>O **${trashName}** vai para a lixeira de **${binType}**! ♻️`;
-                popup.classList.add('show');
-                setTimeout(() => {
-                    popup.classList.remove('show');
-                }, 1500);
-            }
-
-            /** Atualiza o estado da UI (HTML Overlays) */
-            updateUI() {
-                document.querySelectorAll('.overlay').forEach(el => el.style.display = 'none');
-
-                switch (this.state) {
-                    case 'menu':
-                        document.getElementById('menuOverlay').style.display = 'flex';
-                        document.getElementById('highScoreText').textContent = `Recorde: ${this.highScore}`;
-                        break;
-                    case 'playing':
-                        // Nenhum overlay é exibido no modo de jogo ativo
-                        break;
-                    case 'paused':
-                        document.getElementById('pauseOverlay').style.display = 'flex';
-                        break;
-                    case 'win':
-                        const isFinalLevel = this.currentLevel === LEVEL_CONFIG.length;
-                        const winOverlay = document.getElementById('winOverlay');
-                        winOverlay.style.display = 'flex';
-                        document.getElementById('winScore').textContent = this.score;
-                        winOverlay.querySelector('h1').textContent = isFinalLevel ? "🏆 VITÓRIA FINAL! 🏆" : `🎉 Parabéns! Nível ${this.currentLevel} Completo! 🎉`;
-                        
-                        document.getElementById('nextLevelButton').textContent = isFinalLevel ? 'FIM DE JOGO! (Reiniciar)' : 'Próximo Nível';
-                        document.getElementById('nextLevelButton').onclick = isFinalLevel ? () => this.init() : () => this.nextLevel();
-                        
-                        this.spawnParticles(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 100, ['#FF0000', '#00FF00', '#0000FF', '#FFFF00']);
-                        soundLevelUp.play();
-                        break;
-                    case 'lose':
-                        document.getElementById('loseOverlay').style.display = 'flex';
-                        document.getElementById('loseScore').textContent = this.score;
-                        document.getElementById('loseHighScore').textContent = this.highScore;
-                        break;
-                }
-            }
-
-            /** Salva e Carrega High Score */
-            saveHighScore() {
-                if (this.score > this.highScore) {
-                    this.highScore = this.score;
-                    localStorage.setItem('ecogameHighScore', this.highScore);
-                }
-            }
-            loadHighScore() {
-                this.highScore = parseInt(localStorage.getItem('ecogameHighScore') || '0', 10);
-            }
-
-            /** Redimensiona o Canvas para ser responsivo */
-            resizeCanvas() {
-                const rect = this.canvas.getBoundingClientRect();
-                // Calcula o fator de escala para converter coordenadas de clique/toque
-                this.scaleFactor = rect.width / CANVAS_WIDTH;
-            }
-
-            // --- FUNÇÕES DE CONTROLE (DRAG & DROP, TECLADO) ---
-            getCanvasMousePos(event) {
-                const rect = this.canvas.getBoundingClientRect();
-                let clientX, clientY;
-
-                if (event.touches) {
-                    clientX = event.touches[0].clientX;
-                    clientY = event.touches[0].clientY;
-                } else {
-                    clientX = event.clientX;
-                    clientY = event.clientY;
-                }
-
-                // Usa o scaleFactor para mapear a coordenada da tela para a coordenada do Canvas (1200x800)
-                return {
-                    x: (clientX - rect.left) / this.scaleFactor,
-                    y: (clientY - rect.top) / this.scaleFactor
-                };
-            }
-
-            handleMouseDown(pos) {
-                if (this.state !== 'playing') return;
-
-                if (this.draggingTrash) return;
-
-                // Procura um lixo na posição de clique (ordem inversa)
-                for (let i = this.trashItems.length - 1; i >= 0; i--) {
-                    const trash = this.trashItems[i];
-                    if (pos.x > trash.x && pos.x < trash.x + trash.w &&
-                        pos.y > trash.y && pos.y < trash.y + trash.h) {
-
-                        this.draggingTrash = trash;
-                        trash.isDragging = true;
-                        this.dragOffsetX = pos.x - (trash.x + trash.w / 2);
-                        this.dragOffsetY = pos.y - (trash.y + trash.h / 2);
-
-                        this.trashItems.splice(i, 1);
-                        this.trashItems.push(trash);
-                        break;
-                    }
-                }
-            }
-
-            handleMouseMove(pos) {
-                if (this.state !== 'playing' || !this.draggingTrash) return;
-
-                this.draggingTrash.x = pos.x - this.draggingTrash.w / 2 - this.dragOffsetX;
-                this.draggingTrash.y = pos.y - this.draggingTrash.h / 2 - this.dragOffsetY;
-            }
-
-            handleMouseUp() {
-                if (this.state !== 'playing' || !this.draggingTrash) return;
-
-                this.draggingTrash.isDragging = false;
-                this.handleDrop(this.draggingTrash);
-            }
-
-            handleKeydown(event) {
-                switch (event.code) {
-                    case 'KeyP': 
-                        this.togglePause();
-                        break;
-                    case 'KeyR':
-                        if (this.state === 'lose' || this.state === 'win' || this.state === 'paused') {
-                            this.init();
-                        }
-                        break;
-                    case 'KeyM': 
-                        this.musicOn = !this.musicOn;
-                        if (this.musicOn) {
-                            this.setupAudio();
-                            this.addMessage('Música ON', 'lightblue', 50);
-                        } else {
-                            if (this.backgroundMusic) this.backgroundMusic.stop();
-                            this.addMessage('Música OFF', 'darkblue', 5d0);
-                        }
-                        break;
-                }
-            }
-
-            // Configura todos os Listeners de Evento
-            setupEventListeners() {
-                const getPos = (event) => {
-                    event.preventDefault();
-                    return this.getCanvasMousePos(event);
-                }
-
-                this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(getPos(e)));
-                window.addEventListener('mousemove', (e) => this.handleMouseMove(getPos(e)));
-                window.addEventListener('mouseup', () => this.handleMouseUp());
-
-                this.canvas.addEventListener('touchstart', (e) => this.handleMouseDown(getPos(e)));
-                window.addEventListener('touchmove', (e) => this.handleMouseMove(getPos(e)));
-                window.addEventListener('touchend', () => this.handleMouseUp());
-
-                window.addEventListener('keydown', (e) => this.handleKeydown(e));
-            }
-        }
-
-        // --- INICIALIZAÇÃO ---
-        const game = new Game();
-    </script>
-</body>
-</html>
+-- Auto Server Hop Mirage | Blox Fruits
+-- Coloque em StarterPlayerScripts como LocalScript
+
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+local PLACE_ID = game.PlaceId
+
+local FOG_THRESHOLD = 500 -- FogEnd abaixo disso = névoa = chance alta de Mirage
+local HOP_DELAY = 5 -- segundos de espera após entrar no servidor
+local MAX_HOPS = 50
+
+local running = false
+local hops = 0
+
+-- ===== GUI =====
+local gui = Instance.new("ScreenGui")
+gui.Name = "MirageHopGUI"
+gui.ResetOnSpawn = false
+gui.Parent = CoreGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 280, 0, 120)
+frame.Position = UDim2.new(0.5, -140, 0, 20)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+frame.BackgroundTransparency = 0.1
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = frame
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(0, 200, 255)
+stroke.Thickness = 2
+stroke.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 28)
+title.Position = UDim2.new(0, 0, 0, 6)
+title.BackgroundTransparency = 1
+title.Text = "MIRAGE HOP"
+title.TextColor3 = Color3.fromRGB(0, 220, 255)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBlack
+title.Parent = frame
+
+local status = Instance.new("TextLabel")
+status.Name = "Status"
+status.Size = UDim2.new(1, -20, 0, 22)
+status.Position = UDim2.new(0, 10, 0, 36)
+status.BackgroundTransparency = 1
+status.Text = "Status: parado"
+status.TextColor3 = Color3.fromRGB(200, 200, 200)
+status.TextXAlignment = Enum.TextXAlignment.Left
+status.Font = Enum.Font.Gotham
+status.TextSize = 14
+status.Parent = frame
+
+local hopLbl = Instance.new("TextLabel")
+hopLbl.Name = "Hops"
+hopLbl.Size = UDim2.new(1, -20, 0, 18)
+hopLbl.Position = UDim2.new(0, 10, 0, 58)
+hopLbl.BackgroundTransparency = 1
+hopLbl.Text = "Hops: 0"
+hopLbl.TextColor3 = Color3.fromRGB(255, 200, 80)
+hopLbl.TextXAlignment = Enum.TextXAlignment.Left
+hopLbl.Font = Enum.Font.Gotham
+hopLbl.TextSize = 13
+hopLbl.Parent = frame
+
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(1, -20, 0, 30)
+btn.Position = UDim2.new(0, 10, 1, -36)
+btn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+btn.Text = "INICIAR"
+btn.TextColor3 = Color3.new(1, 1, 1)
+btn.Font = Enum.Font.GothamBold
+btn.TextSize = 15
+btn.BorderSizePixel = 0
+btn.Parent = frame
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 8)
+btnCorner.Parent = btn
+
+-- ===== DETECÇÃO =====
+local function detectMirage()
+    -- método 1: névoa baixa
+    if Lighting.FogEnd < FOG_THRESHOLD then
+        return true, "Névoa detectada (FogEnd: " .. math.floor(Lighting.FogEnd) .. ")"
+    end
+
+    -- método 2: procurar objeto com nome "Mirage" no Workspace
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj.Name:lower():find("mirage") then
+            return true, "Objeto Mirage encontrado: " .. obj.Name
+        end
+    end
+
+    return false, "Sem Mirage neste servidor"
+end
+
+-- ===== SERVER HOP =====
+local function getServers()
+    local servers = {}
+    local cursor = ""
+
+    repeat
+        local url = "https://games.roblox.com/v1/games/" .. PLACE_ID .. "/servers/Public?sortOrder=Asc&limit=100"
+        if cursor ~= "" then
+            url = url .. "&cursor=" .. cursor
+        end
+
+        local ok, response = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet(url))
+        end)
+
+        if not ok or not response then
+            break
+        end
+
+        for _, server in ipairs(response.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                table.insert(servers, server)
+            end
+        end
+
+        cursor = response.nextPageCursor or ""
+    until cursor == "" or #servers >= 50
+
+    return servers
+end
+
+local function hopToServer(serverId)
+    TeleportService:TeleportToPlaceInstance(PLACE_ID, serverId, LocalPlayer)
+end
+
+-- ===== LOOP PRINCIPAL =====
+local function startHop()
+    if running then return end
+    running = true
+    hops = 0
+    btn.Text = "PARAR"
+    btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+
+    task.spawn(function()
+        while running do
+            status.Text = "Status: verificando servidor..."
+            hopLbl.Text = "Hops: " .. hops
+
+            task.wait(HOP_DELAY)
+
+            local found, reason = detectMirage()
+
+            if found then
+                status.Text = "Status: MIRAGE ENCONTRADA!"
+                status.TextColor3 = Color3.fromRGB(100, 255, 100)
+                running = false
+                btn.Text = "INICIAR"
+                btn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+
+                local notify = Instance.new("TextLabel")
+                notify.Size = UDim2.new(0, 400, 0, 60)
+                notify.Position = UDim2.new(0.5, -200, 0.3, 0)
+                notify.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                notify.BackgroundTransparency = 0.3
+                notify.Text = "MIRAGE ISLAND ENCONTRADA!\n" .. reason
+                notify.TextColor3 = Color3.fromRGB(100, 255, 100)
+                notify.TextScaled = true
+                notify.Font = Enum.Font.GothamBold
+                notify.Parent = gui
+
+                task.wait(5)
+                notify:Destroy()
+                return
+            end
+
+            status.Text = "Status: " .. reason .. " — trocando..."
+            task.wait(2)
+
+            local servers = getServers()
+            if #servers == 0 then
+                status.Text = "Status: sem servidores disponíveis"
+                task.wait(5)
+            else
+                hops = hops + 1
+                hopLbl.Text = "Hops: " .. hops
+
+                if hops >= MAX_HOPS then
+                    status.Text = "Status: limite de hops atingido"
+                    running = false
+                    btn.Text = "INICIAR"
+                    btn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+                    return
+                end
+
+                local target = servers[math.random(1, #servers)]
+                hopToServer(target.id)
+                task.wait(10)
+            end
+        end
+    end)
+end
+
+local function stopHop()
+    running = false
+    btn.Text = "INICIAR"
+    btn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+    status.Text = "Status: parado"
+    status.TextColor3 = Color3.fromRGB(200, 200, 200)
+end
+
+btn.MouseButton1Click:Connect(function()
+    if running then
+        stopHop()
+    else
+        startHop()
+    end
+end)
+
+print("[Mirage Hop] Carregado.")
